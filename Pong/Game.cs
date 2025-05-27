@@ -11,8 +11,10 @@ namespace Pong
 
         Texture2D ballTexture;
         Vector2 ballPosition;
+        Vector2 ballSpeedVector;
         float ballSpeed;
-        //TODO: Добавете нова булева променлива down, която показва дали топката се движи нагоре/надолу
+        double remainderX;
+        double remainderY;
 
         public Game()
         {
@@ -27,7 +29,11 @@ namespace Pong
                                        _graphics.PreferredBackBufferHeight / 2);
             ballSpeed = 100f;
 
-            //TODO: инициализирайте булевата променлива
+            ballSpeedVector = new Vector2(1, 1);
+            ballSpeedVector.Normalize();
+
+            remainderX = 0.0;
+            remainderY = 0.0;
 
             base.Initialize();
         }
@@ -43,13 +49,40 @@ namespace Pong
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            float updatedBallSpeed = ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            float delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            float moveX = ballSpeedVector.X * ballSpeed * delta + (float)remainderX;
+            float moveY = ballSpeedVector.Y * ballSpeed * delta + (float)remainderY;
 
-            //TODO: Изменете ballPosition.Y координатата в зависимост от стойността на булевата променлива down
+            int intMoveX = (int)moveX;
+            int intMoveY = (int)moveY;
 
-            //TODO: Ако картинката е напуска границите на екрана, това означава, че топката се е "ударила" в края на екрана и трябва да
-            //промени посоката си на движение. За целта трябва да промените променливата down.
+            remainderX = moveX - intMoveX;
+            remainderY = moveY - intMoveY;
 
+            ballPosition.X += intMoveX;
+            ballPosition.Y += intMoveY;
+
+            if (ballPosition.X < ballTexture.Width / 2)
+            {
+                ballPosition.X = ballTexture.Width / 2;
+                ballSpeedVector.X *= -1;
+            }
+            else if (ballPosition.X > _graphics.PreferredBackBufferWidth - ballTexture.Width / 2)
+            {
+                ballPosition.X = _graphics.PreferredBackBufferWidth - ballTexture.Width / 2;
+                ballSpeedVector.X *= -1;
+            }
+
+            if (ballPosition.Y < ballTexture.Height / 2)
+            {
+                ballPosition.Y = ballTexture.Height / 2;
+                ballSpeedVector.Y *= -1;
+            }
+            else if (ballPosition.Y > _graphics.PreferredBackBufferHeight - ballTexture.Height / 2)
+            {
+                ballPosition.Y = _graphics.PreferredBackBufferHeight - ballTexture.Height / 2;
+                ballSpeedVector.Y *= -1;
+            }
 
             base.Update(gameTime);
         }
