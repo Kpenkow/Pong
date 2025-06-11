@@ -10,7 +10,9 @@ namespace Pong
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
+        // Game state
         bool isGameOver;
+        string gameOverMessage = "";
 
         // Ball
         Texture2D ballTexture;
@@ -26,6 +28,9 @@ namespace Pong
         const int BatWidth = 20;
         const int BatHeight = 100;
 
+        // Font
+        SpriteFont gameFont;
+
         public Game()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -35,16 +40,7 @@ namespace Pong
 
         protected override void Initialize()
         {
-            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
-                                       _graphics.PreferredBackBufferHeight / 2);
-            ballSpeed = 200f;
-            ballSpeedVector = new Vector2(1, -1);
-
-            pl1BatPosition = new Vector2(30, _graphics.PreferredBackBufferHeight / 2);
-            pl2BatPosition = new Vector2(_graphics.PreferredBackBufferWidth - 30, _graphics.PreferredBackBufferHeight / 2);
-
-            isGameOver = false;
-
+            ResetGame();
             base.Initialize();
         }
 
@@ -55,9 +51,26 @@ namespace Pong
             // Load ball texture
             ballTexture = Content.Load<Texture2D>("ball");
 
-            // Create simple bat texture (1x1 white pixel, scaled in draw)
+            // Load font
+            gameFont = Content.Load<SpriteFont>("GameFont");
+
+            // Create simple white texture
             batTexture = new Texture2D(GraphicsDevice, 1, 1);
             batTexture.SetData(new[] { Color.White });
+        }
+
+        private void ResetGame()
+        {
+            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
+                                       _graphics.PreferredBackBufferHeight / 2);
+            ballSpeed = 200f;
+            ballSpeedVector = new Vector2(1, -1);
+
+            pl1BatPosition = new Vector2(30, _graphics.PreferredBackBufferHeight / 2);
+            pl2BatPosition = new Vector2(_graphics.PreferredBackBufferWidth - 30, _graphics.PreferredBackBufferHeight / 2);
+
+            isGameOver = false;
+            gameOverMessage = "";
         }
 
         private void checkBallCollision()
@@ -72,13 +85,11 @@ namespace Pong
                 ballSpeedVector.Y = -ballSpeedVector.Y;
             }
 
-            // Rectangle for ball
             Rectangle ballRect = new Rectangle(
                 (int)(ballPosition.X - ballTexture.Width / 2),
                 (int)(ballPosition.Y - ballTexture.Height / 2),
                 ballTexture.Width, ballTexture.Height);
 
-            // Player 1 bat collision
             Rectangle pl1Rect = new Rectangle(
                 (int)(pl1BatPosition.X - BatWidth / 2),
                 (int)(pl1BatPosition.Y - BatHeight / 2),
@@ -89,7 +100,6 @@ namespace Pong
                 ballSpeedVector.X = Math.Abs(ballSpeedVector.X);
             }
 
-            // Player 2 bat collision
             Rectangle pl2Rect = new Rectangle(
                 (int)(pl2BatPosition.X - BatWidth / 2),
                 (int)(pl2BatPosition.Y - BatHeight / 2),
@@ -100,10 +110,16 @@ namespace Pong
                 ballSpeedVector.X = -Math.Abs(ballSpeedVector.X);
             }
 
-            // Game over if ball hits left or right wall
-            if (ballPosition.X < 0 || ballPosition.X > _graphics.PreferredBackBufferWidth)
+            // Check for game over
+            if (ballPosition.X < 0)
             {
                 isGameOver = true;
+                gameOverMessage = "Game Over - Player 2 Wins!";
+            }
+            else if (ballPosition.X > _graphics.PreferredBackBufferWidth)
+            {
+                isGameOver = true;
+                gameOverMessage = "Game Over - Player 1 Wins!";
             }
         }
 
@@ -124,27 +140,19 @@ namespace Pong
         {
             KeyboardState kstate = Keyboard.GetState();
 
-            // Player 1 controls (W/S)
+            // Player 1: W / S
             if (kstate.IsKeyDown(Keys.W))
-            {
                 pl1BatPosition.Y -= batSpeed * deltaTime;
-            }
             if (kstate.IsKeyDown(Keys.S))
-            {
                 pl1BatPosition.Y += batSpeed * deltaTime;
-            }
 
-            // Player 2 controls (Up/Down)
+            // Player 2: Up / Down
             if (kstate.IsKeyDown(Keys.Up))
-            {
                 pl2BatPosition.Y -= batSpeed * deltaTime;
-            }
             if (kstate.IsKeyDown(Keys.Down))
-            {
                 pl2BatPosition.Y += batSpeed * deltaTime;
-            }
 
-            // Clamp positions
+            // Clamp
             pl1BatPosition.Y = MathHelper.Clamp(pl1BatPosition.Y, BatHeight / 2, _graphics.PreferredBackBufferHeight - BatHeight / 2);
             pl2BatPosition.Y = MathHelper.Clamp(pl2BatPosition.Y, BatHeight / 2, _graphics.PreferredBackBufferHeight - BatHeight / 2);
         }
@@ -154,6 +162,14 @@ namespace Pong
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
                 Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+
+            KeyboardState kstate = Keyboard.GetState();
+
+            // Restart with R
+            if (isGameOver && kstate.IsKeyDown(Keys.R))
+            {
+                ResetGame();
+            }
 
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -183,19 +199,40 @@ namespace Pong
                 0f
             );
 
-            // Draw player 1 bat
+            // Player 1 bat
             _spriteBatch.Draw(
                 batTexture,
                 new Rectangle((int)pl1BatPosition.X - BatWidth / 2, (int)pl1BatPosition.Y - BatHeight / 2, BatWidth, BatHeight),
                 Color.Red
             );
 
-            // Draw player 2 bat
+            // Player 2 bat
             _spriteBatch.Draw(
                 batTexture,
                 new Rectangle((int)pl2BatPosition.X - BatWidth / 2, (int)pl2BatPosition.Y - BatHeight / 2, BatWidth, BatHeight),
                 Color.Green
             );
+
+            // Game Over message + restart instruction
+            if (isGameOver)
+            {
+                Vector2 textSize = gameFont.MeasureString(gameOverMessage);
+                Vector2 textPosition = new Vector2(
+                    (_graphics.PreferredBackBufferWidth - textSize.X) / 2,
+                    (_graphics.PreferredBackBufferHeight - textSize.Y) / 2 - 20
+                );
+
+                _spriteBatch.DrawString(gameFont, gameOverMessage, textPosition, Color.Yellow);
+
+                string restartMessage = "Press R to restart";
+                Vector2 restartTextSize = gameFont.MeasureString(restartMessage);
+                Vector2 restartTextPosition = new Vector2(
+                    (_graphics.PreferredBackBufferWidth - restartTextSize.X) / 2,
+                    textPosition.Y + textSize.Y + 10
+                );
+
+                _spriteBatch.DrawString(gameFont, restartMessage, restartTextPosition, Color.White);
+            }
 
             _spriteBatch.End();
 
